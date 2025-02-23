@@ -21,3 +21,5 @@ npm start
 ```
 
 Once the app launches, you can add listeners for serial messages and link them to a corresponding unicode key to be typed!
+
+*Note: The messages {7, 8, and 9} are default example values for the app and will be automatically generated.*
