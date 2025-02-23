@@ -12,7 +12,6 @@ Currently, this app is not avalible as a pakcaged app, so you will need to insta
 ```shell
 npm install electron serialport
 ```
-Then, edit the *main.js* file on lines 55 and 56 to the desired COM port and BAUD rate
 
 
 Then run the file called *process.ahk* in the root directory of this project. 

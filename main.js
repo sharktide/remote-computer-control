@@ -1,8 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const { SerialPort } = require('serialport')
+const { SerialPort } = require('serialport');
 const Readline = require('@serialport/parser-readline');
-const { exec } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 
@@ -10,9 +9,11 @@ const tempDir = os.tmpdir();
 const tempFilePath = path.join(tempDir, 'ahk_input.txt');
 const irdata7 = '{U+2245}';
 
+let port; // This will hold the active serial port object
+let mainWindow; // To keep track of the main window
 
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
@@ -23,6 +24,16 @@ function createWindow() {
   });
 
   mainWindow.loadFile('index.html');
+
+  // List available serial ports and send them to the renderer process
+  SerialPort.list()
+    .then(ports => {
+      const availablePorts = ports.map(port => port.path);
+      mainWindow.webContents.send('available-ports', availablePorts);
+    })
+    .catch(err => {
+      console.error('Error listing ports:', err);
+    });
 }
 
 app.whenReady().then(createWindow);
@@ -48,77 +59,62 @@ app.on('before-quit', () => {
       }
     });
 });
+
+// Handle serial connection
+ipcMain.on('connect-serial', (event, { comPort, baudRate }) => {
+  if (port) {
+    port.close();
+    console.log('Port closed');
+  }
+
+  port = new SerialPort({
+    path: comPort,
+    baudRate: baudRate,
+  });
+
+  //const parser = port.pipe(new Readline({ delimiter: '\n' }));
+
+  port.on('open', () => {
+    console.log(`Port ${comPort} opened at ${baudRate} baud`);
+  });
+  let serialData = ''; // Store incoming data
+
+  port.on('data', function (data) {
+    serialData += data.toString();
+    let completeData = serialData.split('\n');
+    serialData = completeData.pop();
   
+    completeData.forEach(line => {
+      console.log('Data:', line.trim());
+      BrowserWindow.getAllWindows()[0].webContents.send('serial-data', line.trim());
+      if (line.trim() === '7') {
+          console.log('Simulating keypress for ≅ symbol');
+          fs.writeFile(tempFilePath, irdata7, (err) => {
+              if (err) {
+                console.error('Error writing to temp file:', err);
+                return;
+              }
+              console.log(`File written to: ${tempFilePath}`);
+          });
+      }
+    });
+  });
 
-// Initialize the serial port with 'COM9'
-const port = new SerialPort({
-    path: 'COM9',
-    baudRate: 9600,
-})
-
-let serialData = ''; // Store incoming data
-
-// Handle data coming in from the serial port
-
-
-
-port.on('data', function (data) {
-  serialData += data.toString();
-  let completeData = serialData.split('\n');
-  serialData = completeData.pop();
-
-  completeData.forEach(line => {
-    console.log('Data:', line.trim());
-    BrowserWindow.getAllWindows()[0].webContents.send('serial-data', line.trim());
-    if (line.trim() === '7') {
-        console.log('Simulating keypress for ≅ symbol');
-        fs.writeFile(tempFilePath, irdata7, (err) => {
-            if (err) {
-              console.error('Error writing to temp file:', err);
-              return;
-            }
-            console.log(`File written to: ${tempFilePath}`);
-        });
-    }
+  port.on('error', (err) => {
+    console.error('Error:', err.message);
   });
 });
 
-
-
-// Handle the port opening
-port.on('open', () => {
-  console.log('Port opened');
-});
-
-// Handle errors
-port.on('error', (err) => {
-  console.error('Error: ', err.message);
-});
-
-// IPC handling: Sending commands to the serial port
+// IPC handling for sending commands to the serial port
 ipcMain.on('send-command', (event, command) => {
-  console.log(`Sending command: ${command}`);
-  port.write(`${command}\n`, (err) => {
-    if (err) {
-      console.error(`Error writing to port: ${err.message}`);
-    }
-  });
+  if (port) {
+    console.log(`Sending command: ${command}`);
+    port.write(`${command}\n`, (err) => {
+      if (err) {
+        console.error(`Error writing to port: ${err.message}`);
+      }
+    });
+  } else {
+    console.log('No port is open');
+  }
 });
-
-/*
-
-
-   Copyright 2025 Rihaan Meher
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
