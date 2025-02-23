@@ -8,7 +8,7 @@ AutoHotKey 1.1 or later
 Device with serial capabilites (Arduino, Micro:bit)
 Windows Machine
 
-## Currently, this app is not avalible as a pakcaged app, so you will need to install npm and autohotkey. Clone this repository and run 
+Currently, this app is not avalible as a pakcaged app, so you will need to install npm and autohotkey. Clone this repository and run 
 ```shell
 npm install electron serialport
 ```
