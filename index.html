@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Electron Receiver</title>
+</head>
+<body>
+  <h1>Welcome to serial data receiver</h1>
+  <p>Communication with Arduino will be handled here.</p>
+  <input type="text" id="command" placeholder="Enter command">
+  <button onclick="sendCommand()">Send Command</button>
+  <pre id="output"></pre>
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    function sendCommand() {
+      const command = document.getElementById('command').value;
+      ipcRenderer.send('send-command', command);
+    }
+
+    ipcRenderer.on('serial-data', (event, data) => {
+      const output = document.getElementById('output');
+      output.textContent += `\n${data}`;
+    });
+  </script>
+</body>
+</html>
