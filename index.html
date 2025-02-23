@@ -5,31 +5,45 @@
   <title>Electron Receiver</title>
 </head>
 <body>
-  <h1>Welcome to serial data receiver</h1>
+  <h1>Serial Event Mappings</h1>
+
+  <div>
+    <label for="serialData">Serial Data: </label>
+    <input type="text" id="serialData" placeholder="Enter serial value">
+  </div>
   
-  <h3>Select COM Port:</h3>
-  <select id="com-port">
-    <option value="">-- Select COM Port --</option>
+  <div>
+    <label for="unicodeKey">Unicode Key: </label>
+    <input type="text" id="unicodeKey" placeholder="Enter Unicode symbol">
+  </div>
+
+  <button onclick="addMapping()">Add Mapping</button>
+  
+  <h2>Current Mappings:</h2>
+  <pre id="mappings"></pre>
+
+  <h2>Connect to Serial Port</h2>
+  <select id="comPort"></select>
+  <select id="baudRate">
+    <option value="9600">9600</option>
+    <option value="115200">115200</option>
+    <option value="19200">19200</option>
   </select>
-
-  <h3>Enter Baud Rate:</h3>
-  <input type="number" id="baud-rate" placeholder="Enter Baud Rate" value="9600">
-
   <button onclick="connectSerial()">Connect</button>
 
-  <h3>Command Input:</h3>
+  <h2>Send Command</h2>
   <input type="text" id="command" placeholder="Enter command">
   <button onclick="sendCommand()">Send Command</button>
 
-  <h3>Serial Data Output:</h3>
+  <h2>Serial Data Output:</h2>
   <pre id="output"></pre>
 
   <script>
     const { ipcRenderer } = require('electron');
 
-    // Populate the COM port dropdown
+    // Display available serial ports
     ipcRenderer.on('available-ports', (event, ports) => {
-      const comPortSelect = document.getElementById('com-port');
+      const comPortSelect = document.getElementById('comPort');
       ports.forEach(port => {
         const option = document.createElement('option');
         option.value = port;
@@ -38,24 +52,36 @@
       });
     });
 
-    // Handle connection to serial port
-    function connectSerial() {
-      const comPort = document.getElementById('com-port').value;
-      const baudRate = parseInt(document.getElementById('baud-rate').value, 10);
-      if (comPort && baudRate) {
-        ipcRenderer.send('connect-serial', { comPort, baudRate });
-      } else {
-        alert('Please select a COM port and enter a baud rate.');
+    // Display current mappings
+    ipcRenderer.on('current-mappings', (event, mappings) => {
+      const mappingsOutput = document.getElementById('mappings');
+      mappingsOutput.textContent = JSON.stringify(mappings, null, 2);
+    });
+
+    // Add new serial event mapping
+    function addMapping() {
+      const serialData = document.getElementById('serialData').value.trim();
+      const unicodeKey = document.getElementById('unicodeKey').value.trim();
+
+      if (serialData && unicodeKey) {
+        ipcRenderer.send('add-mapping', { serialData, unicodeKey });
       }
     }
 
-    // Send a command to the serial port
+    // Connect to the serial port
+    function connectSerial() {
+      const comPort = document.getElementById('comPort').value;
+      const baudRate = parseInt(document.getElementById('baudRate').value, 10);
+      ipcRenderer.send('connect-serial', { comPort, baudRate });
+    }
+
+    // Send command to serial port
     function sendCommand() {
       const command = document.getElementById('command').value;
       ipcRenderer.send('send-command', command);
     }
 
-    // Listen for incoming serial data
+    // Display serial data output
     ipcRenderer.on('serial-data', (event, data) => {
       const output = document.getElementById('output');
       output.textContent += `\n${data}`;

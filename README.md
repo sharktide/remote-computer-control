@@ -20,4 +20,4 @@ Then run
 npm start
 ```
 
-In this case, whenever the number 7 is received from the serial monitor, the congruent symbol (≅) is pressed on your computer. Feel free to adjust main.js to change this or add more presses.
+Once the app launches, you can add listeners for serial messages and link them to a corresponding unicode key to be typed!

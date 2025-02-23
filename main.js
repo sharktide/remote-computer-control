@@ -1,15 +1,47 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { SerialPort } = require('serialport');
-const Readline = require('@serialport/parser-readline');
 const fs = require('fs');
 const os = require('os');
 
 const tempDir = os.tmpdir();
 const tempFilePath = path.join(tempDir, 'ahk_input.txt');
-const irdata7 = '{U+2245}';
+const configFilePath = path.join(__dirname, 'config.json');
 
-let port; // This will hold the active serial port object
+// Default serial mappings
+let serialMappings = {
+  '7': '{U+2245}',  // Congruency symbol
+  '8': '{U+00B5}',  // Micro symbol (µ)
+  '9': '{U+03C0}',  // Pi symbol (π)
+};
+
+// Load mappings from config file if it exists
+function loadMappingsFromFile() {
+  if (fs.existsSync(configFilePath)) {
+    fs.readFile(configFilePath, (err, data) => {
+      if (err) {
+        console.error('Error reading mappings file:', err);
+      } else {
+        serialMappings = JSON.parse(data);
+        console.log('Mappings loaded:', serialMappings);
+      }
+    });
+  }
+}
+
+// Save mappings to config file
+function saveMappingsToFile() {
+  fs.writeFile(configFilePath, JSON.stringify(serialMappings), (err) => {
+    if (err) {
+      console.error('Error saving mappings:', err);
+    } else {
+      console.log('Mappings saved');
+    }
+  });
+}
+
+// Handle serial connection
+let port;
 let mainWindow; // To keep track of the main window
 
 function createWindow() {
@@ -36,7 +68,10 @@ function createWindow() {
     });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  loadMappingsFromFile();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -50,59 +85,66 @@ app.on('activate', () => {
   }
 });
 
-app.on('before-quit', () => {
-    port.close((err) => {
-      if (err) {
-        console.error('Error closing port: ', err.message);
-      } else {
-        console.log('Port closed');
-      }
-    });
+
+
+// Handle adding a new serial mapping from the renderer
+ipcMain.on('add-mapping', (event, { serialData, unicodeKey }) => {
+  serialMappings[serialData] = unicodeKey;
+
+  // Save mappings to the file
+  saveMappingsToFile();
+
+  // Send updated mappings to the renderer
+  mainWindow.webContents.send('current-mappings', serialMappings);
+  console.log('Updated serial mappings:', serialMappings);
 });
 
-// Handle serial connection
+// Handle the port opening
 ipcMain.on('connect-serial', (event, { comPort, baudRate }) => {
-  if (port) {
-    port.close();
-    console.log('Port closed');
-  }
+    if (port) {
+        port.close();
+        console.log('Port closed');
+    }
 
-  port = new SerialPort({
-    path: comPort,
-    baudRate: baudRate,
-  });
+    port = new SerialPort({
+        path: comPort,
+        baudRate: baudRate,
+    });
 
-  //const parser = port.pipe(new Readline({ delimiter: '\n' }));
+    port.on('open', () => {
+        console.log(`Port ${comPort} opened at ${baudRate} baud`);
+    });
 
-  port.on('open', () => {
-    console.log(`Port ${comPort} opened at ${baudRate} baud`);
-  });
-  let serialData = ''; // Store incoming data
-
-  port.on('data', function (data) {
+    port.on('error', (err) => {
+        console.error('Error:', err.message);
+    });
+    // Handle serial data
+    let serialData = '';
+    port.on('data', (data) => {
     serialData += data.toString();
     let completeData = serialData.split('\n');
     serialData = completeData.pop();
-  
-    completeData.forEach(line => {
-      console.log('Data:', line.trim());
-      BrowserWindow.getAllWindows()[0].webContents.send('serial-data', line.trim());
-      if (line.trim() === '7') {
-          console.log('Simulating keypress for ≅ symbol');
-          fs.writeFile(tempFilePath, irdata7, (err) => {
-              if (err) {
-                console.error('Error writing to temp file:', err);
-                return;
-              }
-              console.log(`File written to: ${tempFilePath}`);
-          });
-      }
-    });
-  });
 
-  port.on('error', (err) => {
-    console.error('Error:', err.message);
-  });
+    completeData.forEach(line => {
+        const trimmedLine = line.trim();
+        console.log('Data:', trimmedLine);
+        mainWindow.webContents.send('serial-data', trimmedLine);
+
+        // Check if there's a mapping for the serial data received
+        if (serialMappings[trimmedLine]) {
+        const unicodeSymbol = serialMappings[trimmedLine];
+        console.log(`Simulating keypress for: ${unicodeSymbol}`);
+
+        fs.writeFile(tempFilePath, unicodeSymbol, (err) => {
+            if (err) {
+            console.error('Error writing to temp file:', err);
+            return;
+            }
+            console.log(`File written to: ${tempFilePath}`);
+        });
+        }
+    });
+    });
 });
 
 // IPC handling for sending commands to the serial port
@@ -116,5 +158,17 @@ ipcMain.on('send-command', (event, command) => {
     });
   } else {
     console.log('No port is open');
+  }
+});
+
+app.on('before-quit', () => {
+  if (port && port.isOpen) {
+    port.close((err) => {
+      if (err) {
+        console.error('Error closing port: ', err.message);
+      } else {
+        console.log('Port closed');
+      }
+    });
   }
 });
