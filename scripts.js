@@ -1,5 +1,10 @@
 const { ipcRenderer } = require('electron');
 
+const link = document.createElement('link');
+link.rel = 'stylesheet';
+link.href = 'styles.css';
+document.head.appendChild(link);
+
 // Display available serial ports
 ipcRenderer.on('available-ports', (event, ports) => {
     const comPortSelect = document.getElementById('comPort');
@@ -17,16 +22,22 @@ ipcRenderer.on('current-mappings', (event, mappings) => {
     mappingsOutput.innerHTML = '';  // Clear previous mappings
 
     for (let serialData in mappings) {
-    const unicodeKey = mappings[serialData];
-    const div = document.createElement('div');
-    div.textContent = `${serialData}: ${unicodeKey}`;
-    
-    const deleteButton = document.createElement('button');
-    deleteButton.textContent = 'Delete';
-    deleteButton.onclick = () => deleteMapping(serialData);
-    
-    div.appendChild(deleteButton);
-    mappingsOutput.appendChild(div);
+        const unicodeKey = mappings[serialData];
+        const div = document.createElement('div');
+        div.textContent = `${serialData}: ${unicodeKey}`;
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.id = 'delMappingButton';
+        deleteButton.onclick = () => {
+            const confirmation = confirm(`Are you sure you want to delete the mapping, "${serialData}: ${unicodeKey}"?`);
+            if (confirmation) {
+                deleteMapping(serialData);
+            }
+        };
+        
+        div.appendChild(deleteButton);
+        mappingsOutput.appendChild(div);
     }
 });
 

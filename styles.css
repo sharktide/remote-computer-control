@@ -31,14 +31,14 @@ input {
     margin-bottom: 1rem;
 }
 
-#connectSerialButton,#addMappingButton {
+#serialButtons,#addMappingButton {
     border-radius: 5px;
     cursor: pointer;
     margin: auto;
     border: 2px solid;
     font-size: 1rem;
 }
-#connectSerialButton {
+#serialButtons {
     border-color: #1e8b54;
     background-color: rgb(72, 228, 139);
 }
@@ -46,13 +46,22 @@ input {
     border-color: #1b4d6e;
     background-color: rgb(133, 176, 225);
 }
-#connectSerialButton:hover {
+#serialButtons:hover {
     background-color: rgb(68, 186, 119);
 }
 #addMappingButton:hover {
     background-color: rgb(83, 139, 209);
 }
+#delMappingButton {
+    border-color: #1b4d6e;
+    background-color: rgb(134, 13, 13);
+    border-radius: 8px; /* Adjust the value for more/less rounding */
+    padding: 5px 10px; /* Optional: Adjust padding for better appearance */
+}
 
+#delMappingButton:hover {
+    background-color: rgb(73, 18, 18);
+}
 
 
 /*
