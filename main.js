@@ -99,6 +99,21 @@ ipcMain.on('add-mapping', (event, { serialData, unicodeKey }) => {
   console.log('Updated serial mappings:', serialMappings);
 });
 
+// Handle deleting a serial mapping
+ipcMain.on('delete-mapping', (event, serialData) => {
+    if (serialMappings[serialData]) {
+      delete serialMappings[serialData];  // Remove the mapping
+      saveMappingsToFile();  // Save updated mappings
+  
+      // Send updated mappings to the renderer
+      mainWindow.webContents.send('current-mappings', serialMappings);
+      console.log(`Deleted mapping for serial data: ${serialData}`);
+    } else {
+      console.log(`No mapping found for serial data: ${serialData}`);
+    }
+  });
+  
+
 // Handle the port opening
 ipcMain.on('connect-serial', (event, { comPort, baudRate }) => {
     if (port) {

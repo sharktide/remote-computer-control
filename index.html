@@ -20,7 +20,7 @@
   <button onclick="addMapping()">Add Mapping</button>
   
   <h2>Current Mappings:</h2>
-  <pre id="mappings"></pre>
+  <div id="mappings"></div>
 
   <h2>Connect to Serial Port</h2>
   <select id="comPort"></select>
@@ -52,10 +52,23 @@
       });
     });
 
-    // Display current mappings
+    // Display current mappings and add a "Delete" button
     ipcRenderer.on('current-mappings', (event, mappings) => {
       const mappingsOutput = document.getElementById('mappings');
-      mappingsOutput.textContent = JSON.stringify(mappings, null, 2);
+      mappingsOutput.innerHTML = '';  // Clear previous mappings
+
+      for (let serialData in mappings) {
+        const unicodeKey = mappings[serialData];
+        const div = document.createElement('div');
+        div.textContent = `${serialData}: ${unicodeKey}`;
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.onclick = () => deleteMapping(serialData);
+        
+        div.appendChild(deleteButton);
+        mappingsOutput.appendChild(div);
+      }
     });
 
     // Add new serial event mapping
@@ -66,6 +79,11 @@
       if (serialData && unicodeKey) {
         ipcRenderer.send('add-mapping', { serialData, unicodeKey });
       }
+    }
+
+    // Delete a serial event mapping
+    function deleteMapping(serialData) {
+      ipcRenderer.send('delete-mapping', serialData);
     }
 
     // Connect to the serial port
