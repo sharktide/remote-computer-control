@@ -35,12 +35,12 @@
                 <option value="115200">115200</option>
                 <option value="19200">19200</option>
             </select>
-            <button onclick="connectSerial()" id="connectSerialButton">Connect</button>
+            <button onclick="connectSerial()" id="serialButtons">Connect</button>
         </div>
 
         <h2>Send Command</h2>
         <input type="text" id="command" placeholder="Enter command">
-        <button onclick="sendCommand()">Send Command</button>
+        <button id = "serialButtons" onclick="sendCommand()">Send Command</button>
 
         <h2>Serial Data Output:</h2>
         <pre id="output"></pre>
